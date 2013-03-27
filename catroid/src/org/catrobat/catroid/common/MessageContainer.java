@@ -26,35 +26,30 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.Vector;
 
+import org.catrobat.catroid.ProjectManager;
 import org.catrobat.catroid.R;
 import org.catrobat.catroid.content.BroadcastScript;
 
 import android.content.Context;
 import android.widget.ArrayAdapter;
 
-/**
- * @author Johannes Iber
- * 
- */
 public class MessageContainer {
 
-	private static TreeMap<String, Vector<BroadcastScript>> receiverMap = new TreeMap<String, Vector<BroadcastScript>>();
-	private static ArrayAdapter<String> messageAdapter = null;
+	private static TreeMap<String, Vector<BroadcastScript>> globalreceiverMap = new TreeMap<String, Vector<BroadcastScript>>();
+	//	private static ArrayAdapter<String> globalMessageAdapter = null;
+	private static TreeMap<String, ArrayAdapter<String>> projectMap = new TreeMap<String, ArrayAdapter<String>>();
 
 	public static void clear() {
-		receiverMap.clear();
-		if (messageAdapter != null) {
-			messageAdapter.clear();
-			messageAdapter = null;
-		}
+		globalreceiverMap.clear();
+		projectMap.clear();
 	}
 
 	public static void addMessage(String message) {
 		if (message.length() == 0) {
 			return;
 		}
-		if (!receiverMap.containsKey(message)) {
-			receiverMap.put(message, new Vector<BroadcastScript>());
+		if (!globalreceiverMap.containsKey(message)) {
+			globalreceiverMap.put(message, new Vector<BroadcastScript>());
 			addMessageToAdapter(message);
 		}
 	}
@@ -63,53 +58,64 @@ public class MessageContainer {
 		if (message.length() == 0) {
 			return;
 		}
-		if (receiverMap.containsKey(message)) {
-			receiverMap.get(message).add(script);
+		if (globalreceiverMap.containsKey(message)) {
+			globalreceiverMap.get(message).add(script);
 		} else {
 			Vector<BroadcastScript> receiverVec = new Vector<BroadcastScript>();
 			receiverVec.add(script);
-			receiverMap.put(message, receiverVec);
+			globalreceiverMap.put(message, receiverVec);
 			addMessageToAdapter(message);
 		}
 	}
 
 	public static void deleteReceiverScript(String message, BroadcastScript script) {
-		if (receiverMap.containsKey(message)) {
-			receiverMap.get(message).removeElement(script);
+		if (globalreceiverMap.containsKey(message)) {
+			globalreceiverMap.get(message).removeElement(script);
 		}
 	}
 
 	public static Vector<BroadcastScript> getReceiverOfMessage(String message) {
-		return receiverMap.get(message);
+		return globalreceiverMap.get(message);
 	}
 
 	public static Set<String> getMessages() {
-		return receiverMap.keySet();
+		return globalreceiverMap.keySet();
 	}
 
 	private static synchronized void addMessageToAdapter(String message) {
-		if (messageAdapter != null) {
-			messageAdapter.add(message);
+		ArrayAdapter<String> projectMessageAdapter = projectMap.get(ProjectManager.getInstance().getCurrentProject()
+				.getName());
+		if (projectMessageAdapter != null) {
+			projectMessageAdapter.add(message);
 		}
+		projectMap.put(ProjectManager.getInstance().getCurrentProject().getName(), projectMessageAdapter);
 	}
 
 	public static synchronized ArrayAdapter<String> getMessageAdapter(Context context) {
-		if (messageAdapter == null) {
-			messageAdapter = new ArrayAdapter<String>(context, android.R.layout.simple_spinner_item);
-			messageAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-			messageAdapter.add(context.getString(R.string.broadcast_nothing_selected));
-			Set<String> messageSet = receiverMap.keySet();
+		ArrayAdapter<String> projectMessageAdapter = projectMap.get(ProjectManager.getInstance().getCurrentProject()
+				.getName());
+		if (projectMessageAdapter == null) {
+			projectMessageAdapter = new ArrayAdapter<String>(context, android.R.layout.simple_spinner_item);
+			projectMessageAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+			projectMessageAdapter.add(context.getString(R.string.broadcast_nothing_selected));
+			Set<String> messageSet = globalreceiverMap.keySet();
 			for (String message : messageSet) {
-				messageAdapter.add(message);
+				projectMessageAdapter.add(message);
 			}
 		}
-		return messageAdapter;
+		return projectMessageAdapter;
 	}
 
 	public static int getPositionOfMessageInAdapter(String message) {
-		if (!receiverMap.containsKey(message)) {
+		if (!globalreceiverMap.containsKey(message)) {
 			return -1;
 		}
-		return messageAdapter.getPosition(message);
+
+		ArrayAdapter<String> projectMessageAdapter = projectMap.get(ProjectManager.getInstance().getCurrentProject()
+				.getName());
+		if (projectMessageAdapter == null) {
+			return -1;
+		}
+		return projectMessageAdapter.getPosition(message);
 	}
 }
